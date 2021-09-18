@@ -37,7 +37,7 @@ def take_screenshot():
         send_data(image_data)
         image_data = file.read(1024)
 
-    time.sleep(2)
+    time.sleep(1)
     send_data('done'.encode())
     file.close()
     os.remove(picture_name)
@@ -46,10 +46,10 @@ def receive_file(file_name):
     with open(file_name, "wb") as f:
         while True:
             bytes_read = s.recv(4096)
-            if not bytes_read:
+            if bytes_read == 'done'.encode():
+                f.close()
                 break
             f.write(bytes_read)
-
 server_connect()
 
 while True:
