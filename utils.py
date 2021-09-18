@@ -45,10 +45,7 @@ def draw_animation():
     print("\n\n")
     with tqdm(total=100, desc="Starting", bar_format="{l_bar}{bar:40}") as pbar:
         for i in range(100):
-            if i == 83:
-                sleep(2)
-            else:
-                sleep(0.01)
+            sleep(0.01)
             pbar.update(1)
     
     sleep(1)

