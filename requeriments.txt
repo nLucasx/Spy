@@ -1,9 +1,0 @@
-os==
-socket==
-threading==
-time==
-sys==
-tqdm==
-pyscreeze==
-platform==
-queue==

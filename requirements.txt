@@ -1,0 +1,4 @@
+pyscreeze
+Pillow
+tk
+tqdm
