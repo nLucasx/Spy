@@ -2,7 +2,7 @@ import socket, os, sys, platform, time
 import pyscreeze
 from tkinter import *
 
-host = "192.168.0.13"
+host = "127.0.0.1"
 port = 4444
 buffer_size = 1024
 
