@@ -1,3 +1,4 @@
+pyscreeze
+Pillow
+tk
 tqdm
-PyScreeze
-future
