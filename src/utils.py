@@ -2,9 +2,6 @@ from time import sleep
 from tqdm import tqdm
 from os import system
 
-GREEN = '\033[60m'
-RESET = '\u001b[0m'
-
 logo = '''
             .▄▄ ·  ▄▄▄· ▄· ▄▌
             ▐█ ▀. ▐█ ▄█▐█▪██▌
